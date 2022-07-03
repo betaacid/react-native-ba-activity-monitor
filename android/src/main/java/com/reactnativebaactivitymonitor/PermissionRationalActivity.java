@@ -23,7 +23,7 @@ import java.util.Arrays;
 public class PermissionRationalActivity extends AppCompatActivity implements
         ActivityCompat.OnRequestPermissionsResultCallback {
 
-    private static final String TAG = "PermissionRationalActivity";
+    private static final String TAG = "PermissionActivity";
 
     /* Id to identify Activity Recognition permission request. */
     private static final int PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 45;
