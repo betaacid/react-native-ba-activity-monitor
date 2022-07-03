@@ -39,6 +39,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
 
     private TransitionsReceiver mTransitionsReceiver = new TransitionsReceiver();
     private PendingIntent mActivityTransitionsPendingIntent;
+    private static final int PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 45;
     private boolean activityTrackingEnabled;
 
     private boolean runningQOrLater =
@@ -74,7 +75,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
     public boolean isAllowedToTrackActivities() {
         if (runningQOrLater) {
             return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-                    getReactApplicationContext(),
+                    getReactApplicationContext().getCurrentActivity(),
                     Manifest.permission.ACTIVITY_RECOGNITION
             );
         } else {
@@ -93,10 +94,10 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
 
         ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
 
-        getReactApplicationContext().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
-        mActivityTransitionsPendingIntent = PendingIntent.getBroadcast(getReactApplicationContext(), 0, new Intent(TRANSITIONS_RECEIVER_ACTION), 0);
+        getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
+        mActivityTransitionsPendingIntent = PendingIntent.getBroadcast(getReactApplicationContext().getCurrentActivity(), 0, new Intent(TRANSITIONS_RECEIVER_ACTION), 0);
 
-        Task<Void> task = ActivityRecognition.getClient(getReactApplicationContext())
+        Task<Void> task = ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
           .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent);
 
         task.addOnSuccessListener(
@@ -113,10 +114,18 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
           new OnFailureListener() {
             @Override
             public void onFailure(@NonNull Exception e) {
+                activityTrackingEnabled = false;
                 promise.reject(e);
-
             }
         });
+    }
+
+    @ReactMethod
+    public void askPermissionAndroid() {
+      ActivityCompat.requestPermissions(
+        getReactApplicationContext().getCurrentActivity(),
+        new String[]{Manifest.permission.ACTIVITY_RECOGNITION},
+        PERMISSION_REQUEST_ACTIVITY_RECOGNITION);
     }
 
     @ReactMethod
@@ -125,16 +134,13 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
             startTracking(promise);
             promise.resolve(true);
         } else {
-            // Request permission and start activity for result. If the permission is approved, we
-            // want to make sure we start activity recognition tracking.
-            Intent startIntent = new Intent(getReactApplicationContext(), PermissionRationalActivity.class);
-            getReactApplicationContext().startActivityForResult(startIntent, 0, Bundle.EMPTY);
+            askPermissionAndroid();
         }
     }
 
     @ReactMethod
     public void stop() {
-      getReactApplicationContext().unregisterReceiver(mTransitionsReceiver);
+      getReactApplicationContext().getCurrentActivity().unregisterReceiver(mTransitionsReceiver);
     }
 
     public class TransitionsReceiver extends BroadcastReceiver {

@@ -11,11 +11,13 @@ yarn add react-native-ba-activity-monitor
 ## Usage
 
 ```js
-import { multiply } from 'react-native-ba-activity-monitor';
+import ActivityMonitor from 'react-native-ba-activity-monitor';
 
 // ...
 
-const result = await multiply(3, 7);
+ActivityMonitor.start()
+  .then(() => console.log('Success'))
+  .catch((e) => console.error('Activity manager not possible to start: ' + e));
 ```
 
 ## Contributing
