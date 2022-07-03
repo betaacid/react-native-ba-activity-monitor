@@ -101,23 +101,17 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
           .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent);
 
         task.addOnSuccessListener(
-          new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                activityTrackingEnabled = true;
-                promise.resolve(true);
+          result -> {
+              activityTrackingEnabled = true;
+              promise.resolve(true);
 
-            }
-        });
+          });
 
         task.addOnFailureListener(
-          new OnFailureListener() {
-            @Override
-            public void onFailure(@NonNull Exception e) {
-                activityTrackingEnabled = false;
-                promise.reject(e);
-            }
-        });
+          e -> {
+              activityTrackingEnabled = false;
+              promise.reject(e);
+          });
     }
 
     @ReactMethod
