@@ -1,15 +1,17 @@
 # react-native-ba-activity-monitor
+
 Native Activity Monitor for RN apps
+
 ## Installation
 
 ```sh
-npm install react-native-ba-activity-monitor
+yarn add react-native-ba-activity-monitor
 ```
 
 ## Usage
 
 ```js
-import { multiply } from "react-native-ba-activity-monitor";
+import { multiply } from 'react-native-ba-activity-monitor';
 
 // ...
 
@@ -22,8 +24,8 @@ See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the 
 
 ## License
 
-MIT
+Unlicensed code. For exclusive usage of BetaAcid LLC.
 
 ---
 
-Made with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
+Boostraped with [create-react-native-library](https://github.com/callstack/react-native-builder-bob)
