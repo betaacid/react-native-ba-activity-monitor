@@ -70,7 +70,7 @@ export enum Activity {
 }
 
 export type OnActivityCallback = (
-  activity: Activity,
+  activities: Activity[],
   type: ActivityType
 ) => void;
 export type OnActivityUnregisterCallback = () => void;

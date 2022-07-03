@@ -23,7 +23,9 @@ import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityTransition;
+import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionRequest;
+import com.google.android.gms.location.ActivityTransitionResult;
 import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.tasks.Task;
 import java.util.ArrayList;
@@ -203,15 +205,23 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
           @Override
           public void onReceive(Context context, Intent intent) {
               Log.d(TAG, "onReceive(): " + intent);
-
               if (!TextUtils.equals(TRANSITIONS_RECEIVER_ACTION, intent.getAction())) {
-
                   Log.e(TAG, "Received an unsupported action in TransitionsReceiver: action = " +
                           intent.getAction());
                   return;
               }
 
+              if (ActivityTransitionResult.hasResult(intent)) {
+                ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
+                for (ActivityTransitionEvent event : result.getTransitionEvents()) {
 
+//                  String info = "Transition: " + toActivityString(event.getActivityType()) +
+//                    " (" + toTransitionType(event.getTransitionType()) + ")" + "   " +
+//                    new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
+//
+//                  printToScreen(info);
+                }
+              }
           }
       }
 
