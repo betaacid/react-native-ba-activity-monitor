@@ -22,10 +22,5 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
-
-      <activity
-        android:name="com.reactnativebaactivitymonitor.PermissionRationalActivity"
-        android:label="@string/title_activity_permission_rational"
-        android:theme="@style/Theme.AppCompat.NoActionBar" />
     </application>
 </manifest>

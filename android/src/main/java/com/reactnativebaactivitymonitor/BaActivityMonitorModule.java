@@ -1,6 +1,8 @@
 package com.reactnativebaactivitymonitor;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -15,11 +17,14 @@ import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
 
 import com.facebook.react.BuildConfig;
+import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.modules.core.PermissionAwareActivity;
+import com.facebook.react.modules.core.PermissionListener;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.ActivityTransitionRequest;
@@ -32,7 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @ReactModule(name = BaActivityMonitorModule.NAME)
-public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
+public class BaActivityMonitorModule extends ReactContextBaseJavaModule implements PermissionListener {
 
     private final static String TAG = "BaActivityModule";
     public static final String NAME = "BaActivityMonitor";
@@ -46,6 +51,13 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
         android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q;
     private final String TRANSITIONS_RECEIVER_ACTION =
         "BA_ACTIVITY_MONITOR_TRANSITIONS_RECEIVER_ACTION";
+
+    private final String GRANTED = "granted";
+    private final String DENIED = "denied";
+    private final String UNAVAILABLE = "unavailable";
+    private final String BLOCKED = "blocked";
+
+    private Request mPermissionRequest;
 
 
     public BaActivityMonitorModule(ReactApplicationContext reactContext) {
@@ -115,20 +127,51 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void askPermissionAndroid() {
+    public void askPermissionAndroid(Promise promise) {
       ActivityCompat.requestPermissions(
         getReactApplicationContext().getCurrentActivity(),
-        new String[]{Manifest.permission.ACTIVITY_RECOGNITION},
+        new String[]{},
         PERMISSION_REQUEST_ACTIVITY_RECOGNITION);
+
+      String permission = Manifest.permission.ACTIVITY_RECOGNITION;
+      PermissionAwareActivity activity = getPermissionAwareActivity();
+      boolean[] rationaleStatuses = new boolean[1];
+      rationaleStatuses[0] = activity.shouldShowRequestPermissionRationale(permission);
+
+      mPermissionRequest = new Request(
+        rationaleStatuses,
+        new Callback() {
+          @SuppressLint("ApplySharedPref")
+          @Override
+          public void invoke(Object... args) {
+            int[] results = (int[]) args[0];
+
+            if (results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED) {
+              promise.resolve(GRANTED);
+            } else {
+              PermissionAwareActivity activity = (PermissionAwareActivity) args[1];
+              boolean[] rationaleStatuses = (boolean[]) args[2];
+
+              if (rationaleStatuses[0] &&
+                !activity.shouldShowRequestPermissionRationale(permission)) {
+                promise.resolve(BLOCKED);
+              } else {
+                promise.resolve(DENIED);
+              }
+            }
+          }
+        });
+
+      activity.requestPermissions(new String[]{permission}, PERMISSION_REQUEST_ACTIVITY_RECOGNITION, this);
     }
 
     @ReactMethod
     public void start(Promise promise) {
-        if (isAllowedToTrackActivities()) {
+        if (!isAllowedToTrackActivities()) {
             startTracking(promise);
             promise.resolve(true);
         } else {
-            askPermissionAndroid();
+            askPermissionAndroid(promise);
         }
     }
 
@@ -137,19 +180,54 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule {
       getReactApplicationContext().getCurrentActivity().unregisterReceiver(mTransitionsReceiver);
     }
 
-    public class TransitionsReceiver extends BroadcastReceiver {
 
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            Log.d(TAG, "onReceive(): " + intent);
+    private PermissionAwareActivity getPermissionAwareActivity() {
+      Activity activity = getCurrentActivity();
+      if (activity == null) {
+        throw new IllegalStateException(
+          "Tried to use permissions API while not attached to an " + "Activity.");
+      } else if (!(activity instanceof PermissionAwareActivity)) {
+        throw new IllegalStateException(
+          "Tried to use permissions API but the host Activity doesn't"
+            + " implement PermissionAwareActivity.");
+      }
+      return (PermissionAwareActivity) activity;
+    }
 
-            if (!TextUtils.equals(TRANSITIONS_RECEIVER_ACTION, intent.getAction())) {
+    @Override
+    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+      if(requestCode != PERMISSION_REQUEST_ACTIVITY_RECOGNITION) {
+        return false;
+      }
+      mPermissionRequest.callback.invoke(grantResults, getPermissionAwareActivity(), mPermissionRequest.rationaleStatuses);
+      mPermissionRequest = null;
+      return true;
+    }
 
-                Log.e(TAG, "Received an unsupported action in TransitionsReceiver: action = " +
-                        intent.getAction());
-                return;
-            }
-        }
+    private class TransitionsReceiver extends BroadcastReceiver {
+
+          @Override
+          public void onReceive(Context context, Intent intent) {
+              Log.d(TAG, "onReceive(): " + intent);
+
+              if (!TextUtils.equals(TRANSITIONS_RECEIVER_ACTION, intent.getAction())) {
+
+                  Log.e(TAG, "Received an unsupported action in TransitionsReceiver: action = " +
+                          intent.getAction());
+                  return;
+              }
+          }
+      }
+
+    private class Request {
+
+      public boolean[] rationaleStatuses;
+      public Callback callback;
+
+      public Request(boolean[] rationaleStatuses, Callback callback) {
+        this.rationaleStatuses = rationaleStatuses;
+        this.callback = callback;
+      }
     }
 
 }

@@ -7,7 +7,15 @@ export default function App() {
   const [result, setResult] = React.useState<number | undefined>();
 
   React.useEffect(() => {
-    ActivityMonitor.start().then(console.log).catch(console.error);
+    ActivityMonitor.askPermission().then((granted) => {
+      if (granted) {
+        ActivityMonitor.start()
+          .then(() => console.log('Activity monitor started.'))
+          .catch((e) =>
+            console.error('Error starting the activity monitor: ' + e)
+          );
+      }
+    });
   }, []);
 
   return (

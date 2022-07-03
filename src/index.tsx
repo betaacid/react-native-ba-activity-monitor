@@ -20,10 +20,15 @@ const BaActivityMonitor = NativeModules.BaActivityMonitor
 /**
  * Starts the activity monitoring service. If the permission was not yet granted, it will
  * ask the user automatically. For only asking permission, use the method `ActivityMonitor.askPermission()`.
+ * This fails if used on a non supported platform. Currently it only supports 'ios' and 'android'.
  *
- * @returns true if starts correctly or a rejection with the error cause
+ * @returns a promise that resolves if it was initialized correctly
  */
-export function start(): Promise<boolean> {
+export function start(): Promise<PermissionResult | void> {
+  if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
+    throw new Error(`Platform '${Platform.OS}' not supported`);
+  }
+
   return BaActivityMonitor.start();
 }
 
@@ -36,13 +41,20 @@ export function stop(): Promise<boolean> {
   return BaActivityMonitor.start();
 }
 
-export function askPermission(): Promise<boolean> {
+export type PermissionResult = 'granted' | 'denied' | 'unavailable' | 'blocked';
+
+/**
+ * Asks for permission. Can be used for both android and ios platforms and WILL fail if tries to use another platform.
+ *
+ * @returns a promise that resolves whether the notification was accepted or not <boolean>.
+ */
+export function askPermission(): Promise<PermissionResult> {
   if (Platform.OS === 'ios') {
     return BaActivityMonitor.askPermissionIOS();
   } else if (Platform.OS === 'android') {
     return BaActivityMonitor.askPermissionAndroid();
   } else {
-    throw new Error(`Platform ${Platform.OS} not supported`);
+    throw new Error(`Platform '${Platform.OS}' not supported`);
   }
 }
 
