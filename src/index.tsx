@@ -6,7 +6,9 @@ const LINKING_ERROR =
   '- You rebuilt the app after installing the package\n' +
   '- You are not using Expo managed workflow\n';
 
-const BaActivityMonitor = NativeModules.BaActivityMonitor  ? NativeModules.BaActivityMonitor  : new Proxy(
+const BaActivityMonitor = NativeModules.BaActivityMonitor
+  ? NativeModules.BaActivityMonitor
+  : new Proxy(
       {},
       {
         get() {
@@ -15,6 +17,15 @@ const BaActivityMonitor = NativeModules.BaActivityMonitor  ? NativeModules.BaAct
       }
     );
 
-export function multiply(a: number, b: number): Promise<number> {
-  return BaActivityMonitor.multiply(a, b);
+export function start(): Promise<boolean> {
+  return BaActivityMonitor.start();
 }
+
+export function stop(): Promise<boolean> {
+  return BaActivityMonitor.start();
+}
+
+export default {
+  start,
+  stop,
+};
