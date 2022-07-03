@@ -9,14 +9,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
-
 import androidx.annotation.NonNull;
 import androidx.core.app.ActivityCompat;
-
-import com.facebook.react.BuildConfig;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -29,10 +25,7 @@ import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.ActivityTransitionRequest;
 import com.google.android.gms.location.DetectedActivity;
-import com.google.android.gms.tasks.OnFailureListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,7 +37,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     private TransitionsReceiver mTransitionsReceiver = new TransitionsReceiver();
     private PendingIntent mActivityTransitionsPendingIntent;
-    private static final int PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 45;
+    private static final int PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 18923671;
     private boolean activityTrackingEnabled;
 
     private boolean runningQOrLater =
@@ -54,7 +47,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     private final String GRANTED = "granted";
     private final String DENIED = "denied";
-    private final String UNAVAILABLE = "unavailable";
     private final String BLOCKED = "blocked";
 
     private Request mPermissionRequest;
@@ -102,7 +94,8 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         addFullTransition(transitions, DetectedActivity.WALKING);
         addFullTransition(transitions, DetectedActivity.RUNNING);
         addFullTransition(transitions, DetectedActivity.STILL);
-        addFullTransition(transitions, DetectedActivity.WALKING);
+        addFullTransition(transitions, DetectedActivity.ON_BICYCLE);
+        addFullTransition(transitions, DetectedActivity.ON_FOOT);
 
         ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
 
@@ -116,7 +109,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
           result -> {
               activityTrackingEnabled = true;
               promise.resolve(true);
-
           });
 
         task.addOnFailureListener(
@@ -128,11 +120,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     @ReactMethod
     public void askPermissionAndroid(Promise promise) {
-      ActivityCompat.requestPermissions(
-        getReactApplicationContext().getCurrentActivity(),
-        new String[]{},
-        PERMISSION_REQUEST_ACTIVITY_RECOGNITION);
-
       String permission = Manifest.permission.ACTIVITY_RECOGNITION;
       PermissionAwareActivity activity = getPermissionAwareActivity();
       boolean[] rationaleStatuses = new boolean[1];
@@ -167,6 +154,10 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     @ReactMethod
     public void start(Promise promise) {
+        if(activityTrackingEnabled) {
+          return;
+        }
+
         if (!isAllowedToTrackActivities()) {
             startTracking(promise);
             promise.resolve(true);
@@ -177,6 +168,10 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     @ReactMethod
     public void stop() {
+      if(!activityTrackingEnabled) {
+        return;
+      }
+
       getReactApplicationContext().getCurrentActivity().unregisterReceiver(mTransitionsReceiver);
     }
 
@@ -185,11 +180,10 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       Activity activity = getCurrentActivity();
       if (activity == null) {
         throw new IllegalStateException(
-          "Tried to use permissions API while not attached to an " + "Activity.");
+          "Tried to use permissions API while not attached to an Activity.");
       } else if (!(activity instanceof PermissionAwareActivity)) {
         throw new IllegalStateException(
-          "Tried to use permissions API but the host Activity doesn't"
-            + " implement PermissionAwareActivity.");
+          "Tried to use permissions API but the host Activity doesn't implement PermissionAwareActivity.");
       }
       return (PermissionAwareActivity) activity;
     }
@@ -216,6 +210,8 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
                           intent.getAction());
                   return;
               }
+
+
           }
       }
 

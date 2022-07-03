@@ -41,7 +41,7 @@ export function stop(): Promise<boolean> {
   return BaActivityMonitor.start();
 }
 
-export type PermissionResult = 'granted' | 'denied' | 'unavailable' | 'blocked';
+export type PermissionResult = 'granted' | 'denied' | 'blocked';
 
 /**
  * Asks for permission. Can be used for both android and ios platforms and WILL fail if tries to use another platform.
@@ -56,6 +56,34 @@ export function askPermission(): Promise<PermissionResult> {
   } else {
     throw new Error(`Platform '${Platform.OS}' not supported`);
   }
+}
+
+export type ActivityType = 'enter' | 'exit';
+
+export enum Activity {
+  inVehicle = 'IN_VEHICLE',
+  onFoot = 'ON_FOOT',
+  onBicycle = 'ON_BICYCLE',
+  still = 'STILL',
+  walking = 'WALKING',
+  running = 'RUNNING',
+}
+
+export type OnActivityCallback = (
+  activity: Activity,
+  type: ActivityType
+) => void;
+export type OnActivityUnregisterCallback = () => void;
+
+const registeredCallbacks: [String] = [];
+/**
+ * Adds a listener to
+ * @param callback
+ */
+export function onActivity(
+  callback: OnActivityCallback
+): OnActivityUnregisterCallback {
+  return () => {};
 }
 
 export default {
