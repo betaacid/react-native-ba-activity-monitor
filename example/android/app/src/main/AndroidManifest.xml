@@ -24,6 +24,13 @@
       </activity>
 
       <service android:name="com.reactnativebaactivitymonitor.DetectedActivityService" />
-      <receiver android:name="com.reactnativebaactivitymonitor.TransitionsReceiver"/>
+      <receiver
+          android:name="com.reactnativebaactivitymonitor.TransitionsReceiver"
+          android:exported="false"
+          android:permission="com.google.android.gms.permission.ACTIVITY_RECOGNITION">
+          <intent-filter>
+            <action android:name="action.TRANSITIONS_DATA" />
+          </intent-filter>
+      </receiver>
     </application>
 </manifest>

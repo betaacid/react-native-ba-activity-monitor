@@ -9,11 +9,16 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationManagerCompat;
 
 import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.ActivityTransition;
+import com.google.android.gms.location.ActivityTransitionRequest;
+import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.tasks.Task;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DetectedActivityService extends Service {
 
-  public static final long ACTIVITY_UPDATES_INTERVAL = 1000L;
   public static final int DETECTED_ACTIVITY_NOTIFICATION_ID = 10;
   public static final int DETECTED_PENDING_INTENT_REQUEST_CODE = 100;
 
@@ -45,7 +50,15 @@ public class DetectedActivityService extends Service {
   }
 
   private void requestActivityUpdates() {
-    Task<Void> task = ActivityRecognition.getClient(this).requestActivityUpdates(ACTIVITY_UPDATES_INTERVAL, TransitionsReceiver.getPendingIntent(this));
+    if(activityTrackingEnabled) {
+      return;
+    }
+
+    List<ActivityTransition> transitions = new ArrayList<>();
+    ActivityUtils.addAllRelevantTransitions(transitions);
+    ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
+
+    Task<Void> task = ActivityRecognition.getClient(this).requestActivityTransitionUpdates(request, TransitionsReceiver.getPendingIntent(this));
 
     task.addOnSuccessListener(
       result -> {
@@ -59,7 +72,20 @@ public class DetectedActivityService extends Service {
   }
 
   private void removeActivityUpdates() {
+    if(!activityTrackingEnabled) {
+      return;
+    }
 
+    Task<Void> task = ActivityRecognition.getClient(this).removeActivityTransitionUpdates(TransitionsReceiver.getPendingIntent(this));
+    task.addOnSuccessListener(
+      result -> {
+        activityTrackingEnabled = false;
+      });
+
+    task.addOnFailureListener(
+      e -> {
+        activityTrackingEnabled = true;
+      });
   }
 
 }

@@ -3,7 +3,31 @@ package com.reactnativebaactivitymonitor;
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.DetectedActivity;
 
+import java.util.List;
+
 public final class ActivityUtils {
+
+  public static void addAllRelevantTransitions(List<ActivityTransition> transitions) {
+    addFullTransition(transitions, DetectedActivity.IN_VEHICLE);
+    addFullTransition(transitions, DetectedActivity.WALKING);
+    addFullTransition(transitions, DetectedActivity.RUNNING);
+    addFullTransition(transitions, DetectedActivity.STILL);
+    addFullTransition(transitions, DetectedActivity.ON_BICYCLE);
+  }
+
+  public static void addFullTransition(List<ActivityTransition> transitions, int activity) {
+    transitions.add(
+      new ActivityTransition.Builder()
+        .setActivityType(activity)
+        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
+        .build());
+
+    transitions.add(
+      new ActivityTransition.Builder()
+        .setActivityType(activity)
+        .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
+        .build());
+  }
 
   public static int remapActivityType(String activityType) {
     switch(activityType) {

@@ -78,20 +78,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         return NAME;
     }
 
-    private void addFullTransition(List<ActivityTransition> transitions, int activity) {
-        transitions.add(
-                new ActivityTransition.Builder()
-                .setActivityType(activity)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build());
-
-        transitions.add(
-                new ActivityTransition.Builder()
-                .setActivityType(activity)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
-                .build());
-    }
-
     public boolean isAllowedToTrackActivities() {
         if (runningQOrLater) {
             return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
@@ -105,18 +91,11 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     private void startTracking(Promise promise) {
         List<ActivityTransition> transitions = new ArrayList<>();
-
-        addFullTransition(transitions, DetectedActivity.IN_VEHICLE);
-        addFullTransition(transitions, DetectedActivity.WALKING);
-        addFullTransition(transitions, DetectedActivity.RUNNING);
-        addFullTransition(transitions, DetectedActivity.STILL);
-        addFullTransition(transitions, DetectedActivity.ON_BICYCLE);
-        addFullTransition(transitions, DetectedActivity.ON_FOOT);
-
+        ActivityUtils.addAllRelevantTransitions(transitions);
         ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
 
         getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
-        mActivityTransitionsPendingIntent = PendingIntent.getBroadcast(getReactApplicationContext().getCurrentActivity(), 0, new Intent(TRANSITIONS_RECEIVER_ACTION), 0);
+        mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext().getCurrentActivity());
 
         Task<Void> task = ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
           .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent);
@@ -207,7 +186,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
         if (!isAllowedToTrackActivities()) {
             startTracking(promise);
-            getReactApplicationContext().startService(new Intent(getReactApplicationContext(), DetectedActivityService.class));
+            getReactApplicationContext().getCurrentActivity().startService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
             promise.resolve(true);
         } else {
             askPermissionAndroid(promise);
@@ -221,7 +200,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       }
 
       getReactApplicationContext().getCurrentActivity().unregisterReceiver(mTransitionsReceiver);
-      getReactApplicationContext().stopService(new Intent(getReactApplicationContext(), DetectedActivityService.class));
+      getReactApplicationContext().getCurrentActivity().stopService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
     }
 
     @Override

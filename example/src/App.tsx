@@ -10,8 +10,9 @@ export default function App() {
   return (
     <View style={styles.container}>
       <Text>
-        Activity: {activity?.type ?? '...'} -{' '}
-        {activity?.transitionType ?? '...'} - {activity?.timestamp ?? '...'}
+        Activity: {activity?.type ?? '...'} - Type:{' '}
+        {activity?.transitionType ?? '...'} - Time:{' '}
+        {activity?.timestamp ?? '...'}
       </Text>
 
       <Text style={{ marginTop: 10 }}>State: {started ? 'ON' : 'OFF'}</Text>

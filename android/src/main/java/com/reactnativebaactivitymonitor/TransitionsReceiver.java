@@ -59,7 +59,7 @@ public class TransitionsReceiver extends BroadcastReceiver {
   }
 
   public static PendingIntent getPendingIntent(Context context) {
-    Intent intent = new Intent(context, TransitionsReceiver.class);
+    Intent intent = new Intent(BaActivityMonitorModule.TRANSITIONS_RECEIVER_ACTION);
     return PendingIntent.getBroadcast(context, DETECTED_PENDING_INTENT_REQUEST_CODE, intent,
       PendingIntent.FLAG_UPDATE_CURRENT);
   }
