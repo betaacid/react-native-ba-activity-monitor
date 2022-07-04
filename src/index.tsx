@@ -17,6 +17,24 @@ const BaActivityMonitor = NativeModules.BaActivityMonitor
       }
     );
 
+export type ActivityTransitionType = 'enter' | 'exit';
+export type ActivityType =
+  | 'in-vehicle'
+  | 'on-foot'
+  | 'on-bicycle'
+  | 'still'
+  | 'walking'
+  | 'running';
+
+export interface Activity {
+  type: ActivityType;
+  transitionType: ActivityTransitionType;
+  timestamp: number;
+}
+
+export type OnActivityCallback = (activities: Activity[]) => void;
+export type OnActivityUnregisterCallback = () => void;
+
 /**
  * the callbacks called on activity
  */
@@ -49,10 +67,7 @@ export async function start(): Promise<PermissionResult | Boolean> {
   const eventListener = eventEmitter.addListener(
     'activities',
     (event: Activity[]) => {
-      console.log('ACTIVITIES ====');
-      console.log(event);
       registeredCallbacks.forEach((c) => c(event));
-      console.log('===============');
     }
   );
 
@@ -90,23 +105,13 @@ export function askPermission(): Promise<PermissionResult> {
   }
 }
 
-export type ActivityTransitionType = 'enter' | 'exit';
-export type ActivityType =
-  | 'in-vehicle'
-  | 'on-foot'
-  | 'on-bicycle'
-  | 'still'
-  | 'walking'
-  | 'running';
-
-export interface Activity {
-  type: ActivityType;
-  transitioType: ActivityTransitionType;
-  timestamp: number;
+/**
+ * Sends mock activities to simulate the native incoming activity transition. Used for testing.
+ * @param activities the activities to mock
+ */
+export function mockActivities(activities: Activity[]) {
+  BaActivityMonitor.sendMockActivities(activities);
 }
-
-export type OnActivityCallback = (activities: Activity[]) => void;
-export type OnActivityUnregisterCallback = () => void;
 
 /**
  * Registers a listener that receives a list of probable, with the most likely one as the first result.
@@ -132,4 +137,5 @@ export default {
   stop,
   askPermission,
   onActivities,
+  mockActivities,
 };

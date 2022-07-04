@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import androidx.annotation.NonNull;
@@ -22,12 +23,15 @@ import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.module.annotations.ReactModule;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
+import com.google.android.gms.common.internal.safeparcel.SafeParcelableSerializer;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.ActivityTransitionEvent;
@@ -36,6 +40,7 @@ import com.google.android.gms.location.ActivityTransitionResult;
 import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.tasks.Task;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -129,6 +134,37 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     }
 
     @ReactMethod
+    public void sendMockActivities(ReadableArray activities) {
+      Intent intent = new Intent(TRANSITIONS_RECEIVER_ACTION);
+
+      List<ActivityTransitionEvent> events = new ArrayList<ActivityTransitionEvent>();
+
+      for(Object activityMap : activities.toArrayList()) {
+        HashMap activity = (HashMap) activityMap;
+        ActivityTransitionEvent transitionEvent = new ActivityTransitionEvent(
+          ActivityUtils.remapActivityType((String) activity.get("type")),
+          ActivityUtils.remapTransitionType((String) activity.get("transitionType")),
+          (int)((double) activity.get("timestamp"))
+        );
+        events.add(transitionEvent);
+      }
+
+      ActivityTransitionResult result = new ActivityTransitionResult(events);
+      SafeParcelableSerializer.serializeToIntentExtra(result, intent, "com.google.android.location.internal.EXTRA_ACTIVITY_TRANSITION_RESULT");
+      getReactApplicationContext().getCurrentActivity().sendBroadcast(intent);
+    }
+
+    @ReactMethod
+    public void addListener(String eventName) {
+
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
+
+    }
+
+    @ReactMethod
     public void askPermissionAndroid(Promise promise) {
       String permission = Manifest.permission.ACTIVITY_RECOGNITION;
       PermissionAwareActivity activity = getPermissionAwareActivity();
@@ -178,13 +214,29 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     @ReactMethod
     public void stop() {
-      if(!activityTrackingEnabled) {
+      if (!activityTrackingEnabled) {
         return;
       }
 
       getReactApplicationContext().getCurrentActivity().unregisterReceiver(mTransitionsReceiver);
     }
 
+    @Override
+    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+      if (requestCode != PERMISSION_REQUEST_ACTIVITY_RECOGNITION) {
+        return false;
+      }
+      mPermissionRequest.callback.invoke(grantResults, getPermissionAwareActivity(), mPermissionRequest.rationaleStatuses);
+      mPermissionRequest = null;
+      return true;
+    }
+
+    private void sendEvent(String eventName,
+                           @Nullable Object params) {
+      getReactApplicationContext()
+        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+        .emit(eventName, params);
+    }
 
     private PermissionAwareActivity getPermissionAwareActivity() {
       Activity activity = getCurrentActivity();
@@ -196,24 +248,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
           "Tried to use permissions API but the host Activity doesn't implement PermissionAwareActivity.");
       }
       return (PermissionAwareActivity) activity;
-    }
-
-    @Override
-    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-      if(requestCode != PERMISSION_REQUEST_ACTIVITY_RECOGNITION) {
-        return false;
-      }
-      mPermissionRequest.callback.invoke(grantResults, getPermissionAwareActivity(), mPermissionRequest.rationaleStatuses);
-      mPermissionRequest = null;
-      return true;
-    }
-
-    private void sendEvent(ReactContext reactContext,
-                           String eventName,
-                           @Nullable Object params) {
-      reactContext
-        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-        .emit(eventName, params);
     }
 
     private class TransitionsReceiver extends BroadcastReceiver {
@@ -233,15 +267,18 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
                   for (ActivityTransitionEvent event : result.getTransitionEvents()) {
                       WritableMap activity = Arguments.createMap();
-                      activity.putInt("activity", event.getActivityType());
-                      activity.putInt("type", event.getTransitionType());
+                      activity.putString("type", ActivityUtils.mapActivityType(event.getActivityType()));
+                      activity.putString("transitionType", ActivityUtils.mapTransitionType(event.getTransitionType()));
                       activity.putInt("timestamp", (int) event.getElapsedRealTimeNanos());
                       activities.pushMap(activity);
                   }
 
-                  sendEvent(getReactApplicationContext(), "activities", activities);
+                  sendEvent("activities", activities);
               }
           }
+
+
+
       }
 
     private class Request {
@@ -253,6 +290,50 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         this.rationaleStatuses = rationaleStatuses;
         this.callback = callback;
       }
+    }
+
+    private final static class ActivityUtils {
+
+      public static int remapActivityType(String activityType) {
+        switch(activityType) {
+          case "in-vehicle": return DetectedActivity.IN_VEHICLE;
+          case "walking": return DetectedActivity.WALKING;
+          case "running": return DetectedActivity.RUNNING;
+          case "still": return DetectedActivity.STILL;
+          case "on-bicycle": return DetectedActivity.ON_BICYCLE;
+          case "on-foot": return DetectedActivity.ON_FOOT;
+          default: return -1;
+        }
+      }
+
+      public static int remapTransitionType(String activityType) {
+        switch(activityType) {
+          case "enter": return ActivityTransition.ACTIVITY_TRANSITION_ENTER;
+          case "exit": return ActivityTransition.ACTIVITY_TRANSITION_EXIT;
+          default: return -1;
+        }
+      }
+
+      public static String mapActivityType(int activityType) {
+        switch(activityType) {
+          case DetectedActivity.IN_VEHICLE: return "in-vehicle";
+          case DetectedActivity.WALKING: return "walking";
+          case DetectedActivity.RUNNING: return "running";
+          case DetectedActivity.STILL: return "still";
+          case DetectedActivity.ON_BICYCLE: return "on-bicycle";
+          case DetectedActivity.ON_FOOT: return "on-foot";
+          default: return "unknown";
+        }
+      }
+
+      public static String mapTransitionType(int activityType) {
+        switch(activityType) {
+          case ActivityTransition.ACTIVITY_TRANSITION_ENTER: return "enter";
+          case ActivityTransition.ACTIVITY_TRANSITION_EXIT: return "exit";
+          default: return "unknown";
+        }
+      }
+
     }
 
 }
