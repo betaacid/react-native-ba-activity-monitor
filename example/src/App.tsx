@@ -1,11 +1,10 @@
 import * as React from 'react';
 
 import { StyleSheet, View, Text, Alert } from 'react-native';
-import ActivityMonitor from 'react-native-ba-activity-monitor';
+import ActivityMonitor, { Activity } from 'react-native-ba-activity-monitor';
 
 export default function App() {
-  // @ts-ignore-error
-  const [activity, setActivity] = React.useState<string>('-');
+  const [activity, setActivity] = React.useState<Activity | null>(null);
 
   React.useEffect(() => {
     ActivityMonitor.askPermission()
@@ -15,7 +14,9 @@ export default function App() {
         }
 
         await ActivityMonitor.start();
-        await ActivityMonitor;
+        ActivityMonitor.onActivities((activities) => {
+          setActivity(activities[0] || null);
+        });
       })
       .catch((e) => {
         Alert.alert('Not allowed: ' + e.message);
@@ -24,7 +25,10 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      <Text>Activity: {activity}</Text>
+      <Text>
+        Activity: {activity?.type ?? '...'} - {activity?.transitioType ?? '...'}{' '}
+        - {activity?.timestamp ?? '...'}
+      </Text>
     </View>
   );
 }

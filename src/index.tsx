@@ -18,18 +18,47 @@ const BaActivityMonitor = NativeModules.BaActivityMonitor
     );
 
 /**
+ * the callbacks called on activity
+ */
+let registeredCallbacks: OnActivityCallback[] = [];
+
+/**
+ * native module event listener destructor
+ */
+let eventListenerDestructor: (() => void) | null = null;
+
+/**
  * Starts the activity monitoring service. If the permission was not yet granted, it will
  * ask the user automatically. For only asking permission, use the method `ActivityMonitor.askPermission()`.
  * This fails if used on a non supported platform. Currently it only supports 'ios' and 'android'.
  *
  * @returns a promise that resolves if it was initialized correctly
  */
-export function start(): Promise<PermissionResult | void> {
+export async function start(): Promise<PermissionResult | Boolean> {
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
     throw new Error(`Platform '${Platform.OS}' not supported`);
   }
 
-  return BaActivityMonitor.start();
+  const result: PermissionResult | Boolean = await BaActivityMonitor.start();
+
+  if (result !== 'granted' && result !== true) {
+    return result;
+  }
+
+  const eventEmitter = new NativeEventEmitter(NativeModules.BaActivityMonitor);
+  const eventListener = eventEmitter.addListener(
+    'activities',
+    (event: Activity[]) => {
+      console.log('ACTIVITIES ====');
+      console.log(event);
+      registeredCallbacks.forEach((c) => c(event));
+      console.log('===============');
+    }
+  );
+
+  eventListenerDestructor = eventListener.remove;
+
+  return result;
 }
 
 /**
@@ -38,7 +67,10 @@ export function start(): Promise<PermissionResult | void> {
  * @returns whether the service stopped correctly.
  */
 export function stop(): Promise<boolean> {
-  return BaActivityMonitor.start();
+  if (eventListenerDestructor) {
+    eventListenerDestructor();
+  }
+  return BaActivityMonitor.stop();
 }
 
 export type PermissionResult = 'granted' | 'denied' | 'blocked';
@@ -58,38 +90,46 @@ export function askPermission(): Promise<PermissionResult> {
   }
 }
 
-export type ActivityType = 'enter' | 'exit';
+export type ActivityTransitionType = 'enter' | 'exit';
+export type ActivityType =
+  | 'in-vehicle'
+  | 'on-foot'
+  | 'on-bicycle'
+  | 'still'
+  | 'walking'
+  | 'running';
 
-export enum Activity {
-  inVehicle = 'IN_VEHICLE',
-  onFoot = 'ON_FOOT',
-  onBicycle = 'ON_BICYCLE',
-  still = 'STILL',
-  walking = 'WALKING',
-  running = 'RUNNING',
+export interface Activity {
+  type: ActivityType;
+  transitioType: ActivityTransitionType;
+  timestamp: number;
 }
 
-export type OnActivityCallback = (
-  activities: Activity[],
-  type: ActivityType
-) => void;
+export type OnActivityCallback = (activities: Activity[]) => void;
 export type OnActivityUnregisterCallback = () => void;
 
-// const registeredCallbacks: [String] = [];
 /**
- * Adds a listener to
+ * Registers a listener that receives a list of probable, with the most likely one as the first result.
  * @param callback
  */
-export function onActivity(/* callback: OnActivityCallback */): OnActivityUnregisterCallback {
-  const eventEmitter = new NativeEventEmitter(NativeModules.ToastExample);
-  const eventListener = eventEmitter.addListener('EventReminder', (event) => {
-    console.log(event.eventProperty); // "someValue"
-  });
-  return eventListener.remove;
+export function onActivities(
+  callback: OnActivityCallback
+): OnActivityUnregisterCallback {
+  registeredCallbacks.push(callback);
+  return () => {
+    registeredCallbacks = registeredCallbacks.filter((rc) => rc !== callback);
+  };
+}
+
+export function unregisterOnActivitiesListener(
+  callback: OnActivityCallback
+): void {
+  registeredCallbacks = registeredCallbacks.filter((rc) => rc !== callback);
 }
 
 export default {
   start,
   stop,
   askPermission,
+  onActivities,
 };

@@ -12,13 +12,20 @@ import android.content.pm.PackageManager;
 import android.text.TextUtils;
 import android.util.Log;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
 import com.google.android.gms.location.ActivityRecognition;
@@ -30,6 +37,7 @@ import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.tasks.Task;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @ReactModule(name = BaActivityMonitorModule.NAME)
 public class BaActivityMonitorModule extends ReactContextBaseJavaModule implements PermissionListener {
@@ -200,6 +208,14 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       return true;
     }
 
+    private void sendEvent(ReactContext reactContext,
+                           String eventName,
+                           @Nullable Object params) {
+      reactContext
+        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+        .emit(eventName, params);
+    }
+
     private class TransitionsReceiver extends BroadcastReceiver {
 
           @Override
@@ -212,15 +228,18 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
               }
 
               if (ActivityTransitionResult.hasResult(intent)) {
-                ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
-                for (ActivityTransitionEvent event : result.getTransitionEvents()) {
+                  ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
+                  WritableArray activities = Arguments.createArray();
 
-//                  String info = "Transition: " + toActivityString(event.getActivityType()) +
-//                    " (" + toTransitionType(event.getTransitionType()) + ")" + "   " +
-//                    new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
-//
-//                  printToScreen(info);
-                }
+                  for (ActivityTransitionEvent event : result.getTransitionEvents()) {
+                      WritableMap activity = Arguments.createMap();
+                      activity.putInt("activity", event.getActivityType());
+                      activity.putInt("type", event.getTransitionType());
+                      activity.putInt("timestamp", (int) event.getElapsedRealTimeNanos());
+                      activities.pushMap(activity);
+                  }
+
+                  sendEvent(getReactApplicationContext(), "activities", activities);
               }
           }
       }
