@@ -33,6 +33,7 @@ import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
 import com.google.android.gms.common.internal.safeparcel.SafeParcelableSerializer;
 import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionRequest;
@@ -42,7 +43,6 @@ import com.google.android.gms.tasks.Task;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @ReactModule(name = BaActivityMonitorModule.NAME)
 public class BaActivityMonitorModule extends ReactContextBaseJavaModule implements PermissionListener {
@@ -50,14 +50,15 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     private final static String TAG = "BaActivityModule";
     public static final String NAME = "BaActivityMonitor";
 
-    private TransitionsReceiver mTransitionsReceiver = new TransitionsReceiver();
+    private TransitionsReceiver mTransitionsReceiver = new TransitionsReceiver(this);
     private PendingIntent mActivityTransitionsPendingIntent;
     private static final int PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 18923671;
     private boolean activityTrackingEnabled;
 
     private boolean runningQOrLater =
         android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q;
-    private final String TRANSITIONS_RECEIVER_ACTION =
+
+    public static final String TRANSITIONS_RECEIVER_ACTION =
         "BA_ACTIVITY_MONITOR_TRANSITIONS_RECEIVER_ACTION";
 
     private final String GRANTED = "granted";
@@ -137,7 +138,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     public void sendMockActivities(ReadableArray activities) {
       Intent intent = new Intent(TRANSITIONS_RECEIVER_ACTION);
 
-      List<ActivityTransitionEvent> events = new ArrayList<ActivityTransitionEvent>();
+      List<ActivityTransitionEvent> events = new ArrayList();
 
       for(Object activityMap : activities.toArrayList()) {
         HashMap activity = (HashMap) activityMap;
@@ -206,6 +207,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
         if (!isAllowedToTrackActivities()) {
             startTracking(promise);
+            getReactApplicationContext().startService(new Intent(getReactApplicationContext(), DetectedActivityService.class));
             promise.resolve(true);
         } else {
             askPermissionAndroid(promise);
@@ -219,6 +221,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       }
 
       getReactApplicationContext().getCurrentActivity().unregisterReceiver(mTransitionsReceiver);
+      getReactApplicationContext().stopService(new Intent(getReactApplicationContext(), DetectedActivityService.class));
     }
 
     @Override
@@ -231,7 +234,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       return true;
     }
 
-    private void sendEvent(String eventName,
+    public void sendJSEvent(String eventName,
                            @Nullable Object params) {
       getReactApplicationContext()
         .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
@@ -250,37 +253,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       return (PermissionAwareActivity) activity;
     }
 
-    private class TransitionsReceiver extends BroadcastReceiver {
-
-          @Override
-          public void onReceive(Context context, Intent intent) {
-              Log.d(TAG, "onReceive(): " + intent);
-              if (!TextUtils.equals(TRANSITIONS_RECEIVER_ACTION, intent.getAction())) {
-                  Log.e(TAG, "Received an unsupported action in TransitionsReceiver: action = " +
-                          intent.getAction());
-                  return;
-              }
-
-              if (ActivityTransitionResult.hasResult(intent)) {
-                  ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
-                  WritableArray activities = Arguments.createArray();
-
-                  for (ActivityTransitionEvent event : result.getTransitionEvents()) {
-                      WritableMap activity = Arguments.createMap();
-                      activity.putString("type", ActivityUtils.mapActivityType(event.getActivityType()));
-                      activity.putString("transitionType", ActivityUtils.mapTransitionType(event.getTransitionType()));
-                      activity.putInt("timestamp", (int) event.getElapsedRealTimeNanos());
-                      activities.pushMap(activity);
-                  }
-
-                  sendEvent("activities", activities);
-              }
-          }
-
-
-
-      }
-
     private class Request {
 
       public boolean[] rationaleStatuses;
@@ -290,50 +262,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         this.rationaleStatuses = rationaleStatuses;
         this.callback = callback;
       }
-    }
-
-    private final static class ActivityUtils {
-
-      public static int remapActivityType(String activityType) {
-        switch(activityType) {
-          case "in-vehicle": return DetectedActivity.IN_VEHICLE;
-          case "walking": return DetectedActivity.WALKING;
-          case "running": return DetectedActivity.RUNNING;
-          case "still": return DetectedActivity.STILL;
-          case "on-bicycle": return DetectedActivity.ON_BICYCLE;
-          case "on-foot": return DetectedActivity.ON_FOOT;
-          default: return -1;
-        }
-      }
-
-      public static int remapTransitionType(String activityType) {
-        switch(activityType) {
-          case "enter": return ActivityTransition.ACTIVITY_TRANSITION_ENTER;
-          case "exit": return ActivityTransition.ACTIVITY_TRANSITION_EXIT;
-          default: return -1;
-        }
-      }
-
-      public static String mapActivityType(int activityType) {
-        switch(activityType) {
-          case DetectedActivity.IN_VEHICLE: return "in-vehicle";
-          case DetectedActivity.WALKING: return "walking";
-          case DetectedActivity.RUNNING: return "running";
-          case DetectedActivity.STILL: return "still";
-          case DetectedActivity.ON_BICYCLE: return "on-bicycle";
-          case DetectedActivity.ON_FOOT: return "on-foot";
-          default: return "unknown";
-        }
-      }
-
-      public static String mapTransitionType(int activityType) {
-        switch(activityType) {
-          case ActivityTransition.ACTIVITY_TRANSITION_ENTER: return "enter";
-          case ActivityTransition.ACTIVITY_TRANSITION_EXIT: return "exit";
-          default: return "unknown";
-        }
-      }
-
     }
 
 }

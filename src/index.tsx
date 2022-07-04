@@ -20,7 +20,6 @@ const BaActivityMonitor = NativeModules.BaActivityMonitor
 export type ActivityTransitionType = 'enter' | 'exit';
 export type ActivityType =
   | 'in-vehicle'
-  | 'on-foot'
   | 'on-bicycle'
   | 'still'
   | 'walking'

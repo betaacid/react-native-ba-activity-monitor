@@ -1,12 +1,7 @@
 import * as React from 'react';
 
 import { StyleSheet, View, Text, Alert, Button } from 'react-native';
-import ActivityMonitor, {
-  Activity,
-  start,
-} from 'react-native-ba-activity-monitor';
-
-async function startActivityMonitor() {}
+import ActivityMonitor, { Activity } from 'react-native-ba-activity-monitor';
 
 export default function App() {
   const [started, setStarted] = React.useState(false);
@@ -47,6 +42,7 @@ export default function App() {
             ActivityMonitor.onActivities((activities) => {
               console.debug('[ActivityMonitor] activities:');
               console.debug('[ActivityMonitor]' + JSON.stringify(activities));
+              setActivity(activities[0] || null);
             });
           }}
         />
@@ -72,7 +68,7 @@ export default function App() {
                 timestamp: Date.now(),
               },
               {
-                type: 'on-foot',
+                type: 'walking',
                 transitionType: 'exit',
                 timestamp: Date.now(),
               },
