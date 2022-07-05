@@ -11,8 +11,7 @@ export default function App() {
     <View style={styles.container}>
       <Text>
         Activity: {activity?.type ?? '...'} - Type:{' '}
-        {activity?.transitionType ?? '...'} - Time:{' '}
-        {activity?.timestamp ?? '...'}
+        {activity?.transitionType ?? '...'}
       </Text>
 
       <Text style={{ marginTop: 10 }}>State: {started ? 'ON' : 'OFF'}</Text>
@@ -66,12 +65,10 @@ export default function App() {
               {
                 type: 'in-vehicle',
                 transitionType: 'enter',
-                timestamp: Date.now(),
               },
               {
                 type: 'walking',
                 transitionType: 'exit',
-                timestamp: Date.now(),
               },
             ]);
           }}

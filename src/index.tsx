@@ -28,7 +28,6 @@ export type ActivityType =
 export interface Activity {
   type: ActivityType;
   transitionType: ActivityTransitionType;
-  timestamp: number;
 }
 
 export type OnActivityCallback = (activities: Activity[]) => void;
@@ -73,6 +72,10 @@ export async function start(): Promise<PermissionResult | Boolean> {
   eventListenerDestructor = eventListener.remove;
 
   return result;
+}
+
+export async function isStarted(): Promise<Boolean> {
+  return BaActivityMonitor.isStarted();
 }
 
 /**

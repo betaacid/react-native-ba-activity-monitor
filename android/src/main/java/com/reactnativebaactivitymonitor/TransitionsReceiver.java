@@ -48,7 +48,6 @@ public class TransitionsReceiver extends BroadcastReceiver {
         WritableMap activity = Arguments.createMap();
         activity.putString("type", ActivityUtils.mapActivityType(event.getActivityType()));
         activity.putString("transitionType", ActivityUtils.mapTransitionType(event.getTransitionType()));
-        activity.putInt("timestamp", (int) event.getElapsedRealTimeNanos());
         activities.pushMap(activity);
       }
 

@@ -122,7 +122,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         ActivityTransitionEvent transitionEvent = new ActivityTransitionEvent(
           ActivityUtils.remapActivityType((String) activity.get("type")),
           ActivityUtils.remapTransitionType((String) activity.get("transitionType")),
-          (int)((double) activity.get("timestamp"))
+          SystemClock.elapsedRealtimeNanos()
         );
         events.add(transitionEvent);
       }
@@ -140,6 +140,11 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     @ReactMethod
     public void removeListeners(Integer count) {
 
+    }
+
+    @ReactMethod
+    public void isStarted(Promise promise) {
+      promise.resolve(activityTrackingEnabled);
     }
 
     @ReactMethod
