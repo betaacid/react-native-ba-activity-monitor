@@ -28,9 +28,9 @@ class BaActivityMonitor: RCTEventEmitter {
         }
     }
     
-    @objc(isStarted)
-    func isStarted() -> Bool {
-        return isListeningForActivities
+    @objc(isStarted:reject:)
+    func isStarted(_ resolve:RCTPromiseResolveBlock, reject:RCTPromiseRejectBlock) {
+        resolve(isListeningForActivities)
     }
     
     @objc(start:reject:)
