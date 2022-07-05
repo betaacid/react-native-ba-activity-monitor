@@ -197,7 +197,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
             getReactApplicationContext().getCurrentActivity().startService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
             promise.resolve(true);
         } else {
-            askPermissionAndroid(promise);
+            promise.reject("invalid_permission_status", "Permission needed.");
         }
     }
 
