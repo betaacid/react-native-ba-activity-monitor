@@ -44,20 +44,21 @@ let registeredCallbacks: OnActivityCallback[] = [];
 let eventListenerDestructor: (() => void) | null = null;
 
 /**
- * Starts the activity monitoring service. If the permission was not yet granted, it will
- * ask the user automatically. For only asking permission, use the method `ActivityMonitor.askPermission()`.
- * This fails if used on a non supported platform. Currently it only supports 'ios' and 'android'.
+ * Starts the activity monitoring service. In order for it to start correctly, the user has to give permission first.
+ * For asking permission, use the method `ActivityMonitor.askPermission()`. This fails if used on a non supported
+ * platform. Currently it only supports 'ios' and 'android'.
  *
- * @returns a promise that resolves if it was initialized correctly
+ * @returns a promise that resolves true if it was initialized correctly or false if not. It will return false when
+ * the user didnt provide the permission
  */
-export async function start(): Promise<PermissionResult | Boolean> {
+export async function start(): Promise<Boolean> {
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') {
     throw new Error(`Platform '${Platform.OS}' not supported`);
   }
 
-  const result: PermissionResult | Boolean = await BaActivityMonitor.start();
+  const result: Boolean = await BaActivityMonitor.start();
 
-  if (result !== 'granted' && result !== true) {
+  if (!result) {
     return result;
   }
 
@@ -87,6 +88,7 @@ export function stop(): Promise<boolean> {
   if (eventListenerDestructor) {
     eventListenerDestructor();
   }
+  registeredCallbacks = [];
   return BaActivityMonitor.stop();
 }
 
