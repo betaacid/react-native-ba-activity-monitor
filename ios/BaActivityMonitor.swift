@@ -55,7 +55,7 @@ class BaActivityMonitor: RCTEventEmitter {
     @objc(stop)
     func stop() {
         guard isListeningForActivities else { return }
-        
+        isListeningForActivities = false
         activityManager.stopActivityUpdates()
     }
     
