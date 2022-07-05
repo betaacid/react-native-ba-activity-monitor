@@ -24,6 +24,12 @@ Add this to the bottommost part of your manifest `<application>` tag.
 </receiver>
 ```
 
+### iOS
+
+#### Important
+
+To use this API, you must include the NSMotionUsageDescription key in your app’s Info.plist file and provide a usage description string for this key. The usage description appears in the prompt that the user must accept the first time the system asks the user to access motion data for your app. If you don’t include a usage description string, your app crashes when you call this API.
+
 ## Usage
 
 ```js
