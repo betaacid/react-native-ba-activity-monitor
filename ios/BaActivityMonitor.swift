@@ -48,6 +48,7 @@ class BaActivityMonitor: RCTEventEmitter {
             guard let activity = activity else { return }
             self.sendEvent(withName: "activities", body: NSArray(array: [activity.jsObject]))
         }
+        isListeningForActivities = true
         resolve(true)
     }
     
