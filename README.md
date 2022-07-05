@@ -8,6 +8,22 @@ Native Activity Monitor for RN apps
 yarn add react-native-ba-activity-monitor
 ```
 
+### Android
+
+Add this to the bottommost part of your manifest `<application>` tag.
+
+```xml
+<service android:name="com.reactnativebaactivitymonitor.DetectedActivityService" />
+<receiver
+    android:name="com.reactnativebaactivitymonitor.TransitionsReceiver"
+    android:exported="false"
+    android:permission="com.google.android.gms.permission.ACTIVITY_RECOGNITION">
+    <intent-filter>
+      <action android:name="action.TRANSITIONS_DATA" />
+    </intent-filter>
+</receiver>
+```
+
 ## Usage
 
 ```js
@@ -15,10 +31,22 @@ import ActivityMonitor from 'react-native-ba-activity-monitor';
 
 // ...
 
-ActivityMonitor.start()
-  .then(() => console.log('Success'))
-  .catch((e) => console.error('Activity manager not possible to start: ' + e));
+const permission = await ActivityMonitor.askPermission();
+if (permission === 'granted') {
+  await ActivityMonitor.start();
+  ActivityMonitor.onActivities((activities) => {
+    console.debug(
+      '[ActivityMonitor] activities: ' + JSON.stringify(activities)
+    );
+  });
+}
+
+// ...
 ```
+
+### Considerations
+
+Fully typed with TypeScript. Feel free to aknowledge all the types on the `index.tsx` file and import them as needed in your project.
 
 ## Contributing
 

@@ -9,19 +9,31 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.SystemClock;
 import android.text.TextUtils;
 import android.util.Log;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.module.annotations.ReactModule;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
 import com.facebook.react.modules.core.PermissionAwareActivity;
 import com.facebook.react.modules.core.PermissionListener;
+import com.google.android.gms.common.internal.safeparcel.SafeParcelableSerializer;
 import com.google.android.gms.location.ActivityRecognition;
+import com.google.android.gms.location.ActivityRecognitionClient;
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionRequest;
@@ -29,6 +41,7 @@ import com.google.android.gms.location.ActivityTransitionResult;
 import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.tasks.Task;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 @ReactModule(name = BaActivityMonitorModule.NAME)
@@ -37,14 +50,15 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     private final static String TAG = "BaActivityModule";
     public static final String NAME = "BaActivityMonitor";
 
-    private TransitionsReceiver mTransitionsReceiver = new TransitionsReceiver();
+    private TransitionsReceiver mTransitionsReceiver = new TransitionsReceiver(this);
     private PendingIntent mActivityTransitionsPendingIntent;
     private static final int PERMISSION_REQUEST_ACTIVITY_RECOGNITION = 18923671;
     private boolean activityTrackingEnabled;
 
     private boolean runningQOrLater =
         android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q;
-    private final String TRANSITIONS_RECEIVER_ACTION =
+
+    public static final String TRANSITIONS_RECEIVER_ACTION =
         "BA_ACTIVITY_MONITOR_TRANSITIONS_RECEIVER_ACTION";
 
     private final String GRANTED = "granted";
@@ -64,20 +78,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         return NAME;
     }
 
-    private void addFullTransition(List<ActivityTransition> transitions, int activity) {
-        transitions.add(
-                new ActivityTransition.Builder()
-                .setActivityType(activity)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_ENTER)
-                .build());
-
-        transitions.add(
-                new ActivityTransition.Builder()
-                .setActivityType(activity)
-                .setActivityTransition(ActivityTransition.ACTIVITY_TRANSITION_EXIT)
-                .build());
-    }
-
     public boolean isAllowedToTrackActivities() {
         if (runningQOrLater) {
             return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
@@ -91,29 +91,20 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     private void startTracking(Promise promise) {
         List<ActivityTransition> transitions = new ArrayList<>();
-
-        addFullTransition(transitions, DetectedActivity.IN_VEHICLE);
-        addFullTransition(transitions, DetectedActivity.WALKING);
-        addFullTransition(transitions, DetectedActivity.RUNNING);
-        addFullTransition(transitions, DetectedActivity.STILL);
-        addFullTransition(transitions, DetectedActivity.ON_BICYCLE);
-        addFullTransition(transitions, DetectedActivity.ON_FOOT);
-
+        ActivityUtils.addAllRelevantTransitions(transitions);
         ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
 
         getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
-        mActivityTransitionsPendingIntent = PendingIntent.getBroadcast(getReactApplicationContext().getCurrentActivity(), 0, new Intent(TRANSITIONS_RECEIVER_ACTION), 0);
+        mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext().getCurrentActivity());
 
-        Task<Void> task = ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
-          .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent);
-
-        task.addOnSuccessListener(
+        ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
+          .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent)
+          .addOnSuccessListener(
           result -> {
               activityTrackingEnabled = true;
               promise.resolve(true);
-          });
-
-        task.addOnFailureListener(
+          })
+          .addOnFailureListener(
           e -> {
               activityTrackingEnabled = false;
               promise.reject(e);
@@ -121,7 +112,48 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     }
 
     @ReactMethod
+    public void sendMockActivities(ReadableArray activities) {
+      Intent intent = new Intent(TRANSITIONS_RECEIVER_ACTION);
+
+      List<ActivityTransitionEvent> events = new ArrayList();
+
+      for(Object activityMap : activities.toArrayList()) {
+        HashMap activity = (HashMap) activityMap;
+        ActivityTransitionEvent transitionEvent = new ActivityTransitionEvent(
+          ActivityUtils.remapActivityType((String) activity.get("type")),
+          ActivityUtils.remapTransitionType((String) activity.get("transitionType")),
+          SystemClock.elapsedRealtimeNanos()
+        );
+        events.add(transitionEvent);
+      }
+
+      ActivityTransitionResult result = new ActivityTransitionResult(events);
+      SafeParcelableSerializer.serializeToIntentExtra(result, intent, "com.google.android.location.internal.EXTRA_ACTIVITY_TRANSITION_RESULT");
+      getReactApplicationContext().getCurrentActivity().sendBroadcast(intent);
+    }
+
+    @ReactMethod
+    public void addListener(String eventName) {
+
+    }
+
+    @ReactMethod
+    public void removeListeners(Integer count) {
+
+    }
+
+    @ReactMethod
+    public void isStarted(Promise promise) {
+      promise.resolve(activityTrackingEnabled);
+    }
+
+    @ReactMethod
     public void askPermissionAndroid(Promise promise) {
+      if(isAllowedToTrackActivities()) {
+        promise.resolve(GRANTED);
+        return;
+      }
+
       String permission = Manifest.permission.ACTIVITY_RECOGNITION;
       PermissionAwareActivity activity = getPermissionAwareActivity();
       boolean[] rationaleStatuses = new boolean[1];
@@ -160,8 +192,9 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
           return;
         }
 
-        if (!isAllowedToTrackActivities()) {
+        if (isAllowedToTrackActivities()) {
             startTracking(promise);
+            getReactApplicationContext().getCurrentActivity().startService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
             promise.resolve(true);
         } else {
             askPermissionAndroid(promise);
@@ -170,13 +203,30 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     @ReactMethod
     public void stop() {
-      if(!activityTrackingEnabled) {
+      if (!activityTrackingEnabled) {
         return;
       }
 
       getReactApplicationContext().getCurrentActivity().unregisterReceiver(mTransitionsReceiver);
+      getReactApplicationContext().getCurrentActivity().stopService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
     }
 
+    @Override
+    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+      if (requestCode != PERMISSION_REQUEST_ACTIVITY_RECOGNITION) {
+        return false;
+      }
+      mPermissionRequest.callback.invoke(grantResults, getPermissionAwareActivity(), mPermissionRequest.rationaleStatuses);
+      mPermissionRequest = null;
+      return true;
+    }
+
+    public void sendJSEvent(String eventName,
+                           @Nullable Object params) {
+      getReactApplicationContext()
+        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+        .emit(eventName, params);
+    }
 
     private PermissionAwareActivity getPermissionAwareActivity() {
       Activity activity = getCurrentActivity();
@@ -189,41 +239,6 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       }
       return (PermissionAwareActivity) activity;
     }
-
-    @Override
-    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-      if(requestCode != PERMISSION_REQUEST_ACTIVITY_RECOGNITION) {
-        return false;
-      }
-      mPermissionRequest.callback.invoke(grantResults, getPermissionAwareActivity(), mPermissionRequest.rationaleStatuses);
-      mPermissionRequest = null;
-      return true;
-    }
-
-    private class TransitionsReceiver extends BroadcastReceiver {
-
-          @Override
-          public void onReceive(Context context, Intent intent) {
-              Log.d(TAG, "onReceive(): " + intent);
-              if (!TextUtils.equals(TRANSITIONS_RECEIVER_ACTION, intent.getAction())) {
-                  Log.e(TAG, "Received an unsupported action in TransitionsReceiver: action = " +
-                          intent.getAction());
-                  return;
-              }
-
-              if (ActivityTransitionResult.hasResult(intent)) {
-                ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
-                for (ActivityTransitionEvent event : result.getTransitionEvents()) {
-
-//                  String info = "Transition: " + toActivityString(event.getActivityType()) +
-//                    " (" + toTransitionType(event.getTransitionType()) + ")" + "   " +
-//                    new SimpleDateFormat("HH:mm:ss", Locale.US).format(new Date());
-//
-//                  printToScreen(info);
-                }
-              }
-          }
-      }
 
     private class Request {
 
