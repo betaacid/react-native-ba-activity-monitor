@@ -97,16 +97,14 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
         mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext().getCurrentActivity());
 
-        Task<Void> task = ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
-          .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent);
-
-        task.addOnSuccessListener(
+        ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
+          .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent)
+          .addOnSuccessListener(
           result -> {
               activityTrackingEnabled = true;
               promise.resolve(true);
-          });
-
-        task.addOnFailureListener(
+          })
+          .addOnFailureListener(
           e -> {
               activityTrackingEnabled = false;
               promise.reject(e);
@@ -146,6 +144,11 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     @ReactMethod
     public void askPermissionAndroid(Promise promise) {
+      if(isAllowedToTrackActivities()) {
+        promise.resolve(GRANTED);
+        return;
+      }
+
       String permission = Manifest.permission.ACTIVITY_RECOGNITION;
       PermissionAwareActivity activity = getPermissionAwareActivity();
       boolean[] rationaleStatuses = new boolean[1];
@@ -184,7 +187,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
           return;
         }
 
-        if (!isAllowedToTrackActivities()) {
+        if (isAllowedToTrackActivities()) {
             startTracking(promise);
             getReactApplicationContext().getCurrentActivity().startService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
             promise.resolve(true);
