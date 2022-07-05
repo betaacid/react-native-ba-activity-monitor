@@ -31,15 +31,26 @@ import ActivityMonitor from 'react-native-ba-activity-monitor';
 
 // ...
 
-const permission = await ActivityMonitor.askPermission();
-if (permission === 'granted') {
-  await ActivityMonitor.start();
-  ActivityMonitor.onActivities((activities) => {
-    console.debug(
-      '[ActivityMonitor] activities: ' + JSON.stringify(activities)
-    );
-  });
-}
+useEffect(() => {
+  async function startReceivingActivities() {
+    const permission = await ActivityMonitor.askPermission();
+    if (permission === 'granted') {
+      await ActivityMonitor.start();
+      const unregisterCallback = ActivityMonitor.onActivities((activities) => {
+        console.debug(
+          '[ActivityMonitor] activities: ' + JSON.stringify(activities)
+        );
+      });
+
+      return () => {
+        unregisterCallback(); //just as an example as you dont need to unregister before the .stop call
+        ActivityMonitor.stop();
+      };
+    }
+  }
+
+  return startReceivingActivities();
+}, []);
 
 // ...
 ```
