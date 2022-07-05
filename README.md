@@ -44,6 +44,10 @@ if (permission === 'granted') {
 // ...
 ```
 
+### Considerations
+
+Fully typed with TypeScript. Feel free to aknowledge all the types on the `index.tsx` file and import them as needed in your project.
+
 ## Contributing
 
 See the [contributing guide](CONTRIBUTING.md) to learn how to contribute to the repository and the development workflow.
