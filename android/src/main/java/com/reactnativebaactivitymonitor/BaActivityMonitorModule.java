@@ -34,6 +34,7 @@ import com.facebook.react.modules.core.PermissionListener;
 import com.google.android.gms.common.internal.safeparcel.SafeParcelableSerializer;
 import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.ActivityRecognitionClient;
+import com.google.android.gms.location.ActivityRecognitionResult;
 import com.google.android.gms.location.ActivityTransition;
 import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionRequest;
@@ -90,45 +91,45 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     }
 
     private void startTracking(Promise promise) {
-        List<ActivityTransition> transitions = new ArrayList<>();
-        ActivityUtils.addAllRelevantTransitions(transitions);
-        ActivityTransitionRequest request = new ActivityTransitionRequest(transitions);
+      getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
+      mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext().getCurrentActivity());
 
-        getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
-        mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext().getCurrentActivity());
-
+      try {
         ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
-          .requestActivityTransitionUpdates(request, mActivityTransitionsPendingIntent)
+          .requestActivityUpdates(1000L, mActivityTransitionsPendingIntent)
           .addOnSuccessListener(
-          result -> {
+            result -> {
               activityTrackingEnabled = true;
               promise.resolve(true);
-          })
+            })
           .addOnFailureListener(
-          e -> {
+            e -> {
               activityTrackingEnabled = false;
               promise.reject(e);
-          });
+            });
+      } catch (SecurityException secException) {
+        promise.reject(secException);
+      }
+
     }
 
     @ReactMethod
     public void sendMockActivities(ReadableArray activities) {
       Intent intent = new Intent(TRANSITIONS_RECEIVER_ACTION);
 
-      List<ActivityTransitionEvent> events = new ArrayList();
+      List<DetectedActivity> events = new ArrayList();
 
       for(Object activityMap : activities.toArrayList()) {
         HashMap activity = (HashMap) activityMap;
-        ActivityTransitionEvent transitionEvent = new ActivityTransitionEvent(
+        DetectedActivity detectedActivity = new DetectedActivity(
           ActivityUtils.remapActivityType((String) activity.get("type")),
-          ActivityUtils.remapTransitionType((String) activity.get("transitionType")),
-          SystemClock.elapsedRealtimeNanos()
+          (int) activity.get("confidence")
         );
-        events.add(transitionEvent);
+        events.add(detectedActivity);
       }
 
-      ActivityTransitionResult result = new ActivityTransitionResult(events);
-      SafeParcelableSerializer.serializeToIntentExtra(result, intent, "com.google.android.location.internal.EXTRA_ACTIVITY_TRANSITION_RESULT");
+      ActivityRecognitionResult result = new ActivityRecognitionResult(events, 1000L, SystemClock.elapsedRealtimeNanos());
+      SafeParcelableSerializer.serializeToIntentExtra(result, intent, "com.google.android.location.internal.EXTRA_ACTIVITY_RESULT");
       getReactApplicationContext().getCurrentActivity().sendBroadcast(intent);
     }
 

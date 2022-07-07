@@ -17,7 +17,6 @@ const BaActivityMonitor = NativeModules.BaActivityMonitor
       }
     );
 
-export type ActivityTransitionType = 'enter' | 'exit';
 export type ActivityType =
   | 'in-vehicle'
   | 'on-bicycle'
@@ -27,7 +26,7 @@ export type ActivityType =
 
 export interface Activity {
   type: ActivityType;
-  transitionType: ActivityTransitionType;
+  confidence: number;
 }
 
 export type OnActivityCallback = (activities: Activity[]) => void;
@@ -110,7 +109,7 @@ export function askPermission(): Promise<PermissionResult> {
 }
 
 /**
- * Sends mock activities to simulate the native incoming activity transition. Used for testing.
+ * Sends mock activities to simulate the native incoming activity. Used for testing.
  * @param activities the activities to mock
  */
 export function mockActivities(activities: Activity[]) {
