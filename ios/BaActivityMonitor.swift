@@ -61,7 +61,7 @@ class BaActivityMonitor: RCTEventEmitter {
     
     @objc(sendMockActivities:)
     func sendMockActivities(_ activities: NSArray) {
-        
+        self.sendEvent(withName: "activities", body: activities)
     }
 
     override func supportedEvents() -> [String]! {
