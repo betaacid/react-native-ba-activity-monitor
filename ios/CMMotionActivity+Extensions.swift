@@ -25,7 +25,20 @@ extension CMMotionActivity {
     var jsObject: NSDictionary {
         NSDictionary(dictionary: [
             "type": self.jsType,
-            "transitionType": self.jsTransitionType
+            "confidence": self.confidence.normalizedConfidence
         ])
     }
+}
+
+extension CMMotionActivityConfidence {
+    
+    var normalizedConfidence: Int {
+        switch(self) {
+        case .high: return 100
+        case .medium: return 66
+        case .low: return 33
+        default: return 0
+        }
+    }
+    
 }
