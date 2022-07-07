@@ -10,8 +10,8 @@ export default function App() {
   return (
     <View style={styles.container}>
       <Text>
-        Activity: {activity?.type ?? '...'} - Type:{' '}
-        {activity?.transitionType ?? '...'}
+        Activity: {activity?.type ?? '...'} - Confidence:{' '}
+        {activity?.confidence ?? '...'}
       </Text>
 
       <Text style={{ marginTop: 10 }}>State: {started ? 'ON' : 'OFF'}</Text>
@@ -64,11 +64,11 @@ export default function App() {
             ActivityMonitor.mockActivities([
               {
                 type: 'in-vehicle',
-                transitionType: 'enter',
+                confidence: 95,
               },
               {
                 type: 'walking',
-                transitionType: 'exit',
+                confidence: 31,
               },
             ]);
           }}

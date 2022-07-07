@@ -27,7 +27,7 @@ export type ActivityType =
 
 export interface Activity {
   type: ActivityType;
-  transitionType: ActivityTransitionType;
+  confidence: number;
 }
 
 export type OnActivityCallback = (activities: Activity[]) => void;

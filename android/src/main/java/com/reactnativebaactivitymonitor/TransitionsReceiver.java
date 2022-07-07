@@ -12,8 +12,10 @@ import android.util.Log;
 import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
+import com.google.android.gms.location.ActivityRecognitionResult;
 import com.google.android.gms.location.ActivityTransitionEvent;
 import com.google.android.gms.location.ActivityTransitionResult;
+import com.google.android.gms.location.DetectedActivity;
 
 public class TransitionsReceiver extends BroadcastReceiver {
 
@@ -40,14 +42,14 @@ public class TransitionsReceiver extends BroadcastReceiver {
       return;
     }
 
-    if (ActivityTransitionResult.hasResult(intent)) {
-      ActivityTransitionResult result = ActivityTransitionResult.extractResult(intent);
+    if (ActivityRecognitionResult.hasResult(intent)) {
+      ActivityRecognitionResult result = ActivityRecognitionResult.extractResult(intent);
       WritableArray activities = Arguments.createArray();
 
-      for (ActivityTransitionEvent event : result.getTransitionEvents()) {
+      for (DetectedActivity detectedActivity : result.getProbableActivities()) {
         WritableMap activity = Arguments.createMap();
-        activity.putString("type", ActivityUtils.mapActivityType(event.getActivityType()));
-        activity.putString("transitionType", ActivityUtils.mapTransitionType(event.getTransitionType()));
+        activity.putString("type", ActivityUtils.mapActivityType(detectedActivity.getType()));
+        activity.putDouble("confidence", detectedActivity.getConfidence());
         activities.pushMap(activity);
       }
 
