@@ -47,15 +47,14 @@ useEffect(() => {
           '[ActivityMonitor] activities: ' + JSON.stringify(activities)
         );
       });
-
-      return () => {
-        unregisterCallback(); //just as an example as you dont need to unregister before the .stop call
-        ActivityMonitor.stop();
-      };
     }
   }
 
-  return startReceivingActivities();
+  startReceivingActivities();
+
+  return () => {
+    ActivityMonitor.stop();
+  };
 }, []);
 
 // ...
