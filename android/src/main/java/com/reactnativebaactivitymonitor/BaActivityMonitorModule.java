@@ -79,6 +79,11 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
         return NAME;
     }
 
+    @Override
+    public void onCatalystInstanceDestroy() {
+        this.stop();
+    }
+
     public boolean isAllowedToTrackActivities() {
         if (runningQOrLater) {
             return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(

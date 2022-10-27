@@ -68,4 +68,8 @@ class BaActivityMonitor: RCTEventEmitter {
         return ["activities"]
     }
     
+    override func invalidate() {
+        self.stop()
+    }
+    
 }
