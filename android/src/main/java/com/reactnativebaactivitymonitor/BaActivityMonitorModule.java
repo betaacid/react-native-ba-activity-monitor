@@ -88,10 +88,14 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
   public boolean isAllowedToTrackActivities() {
     if (runningQOrLater) {
-      return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-        getReactApplicationContext().getCurrentActivity(),
-        Manifest.permission.ACTIVITY_RECOGNITION
-      );
+      try {
+        return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
+          getReactApplicationContext().getCurrentActivity(),
+          Manifest.permission.ACTIVITY_RECOGNITION
+        );
+      } catch (Exception e) {
+        return true;
+      }
     } else {
       return true;
     }
