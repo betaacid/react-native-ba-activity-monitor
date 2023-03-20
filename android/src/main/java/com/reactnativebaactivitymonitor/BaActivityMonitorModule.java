@@ -89,7 +89,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
   public boolean isAllowedToTrackActivities() {
     if (runningQOrLater) {
       return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-        getReactApplicationContext().getCurrentActivity(),
+        getReactApplicationContext(),
         Manifest.permission.ACTIVITY_RECOGNITION
       );
     } else {
@@ -99,12 +99,12 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
   private void startTracking(Promise promise) {
     if(mActivityTransitionsPendingIntent == null) {
-      getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
-      mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext().getCurrentActivity());
+      getReactApplicationContext().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
+      mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext());
     }
 
     try {
-      ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
+      ActivityRecognition.getClient(getReactApplicationContext())
         .requestActivityUpdates(1000L, mActivityTransitionsPendingIntent)
         .addOnSuccessListener(
           result -> {
@@ -139,7 +139,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     ActivityRecognitionResult result = new ActivityRecognitionResult(events, 1000L, SystemClock.elapsedRealtimeNanos());
     SafeParcelableSerializer.serializeToIntentExtra(result, intent, "com.google.android.location.internal.EXTRA_ACTIVITY_RESULT");
-    getReactApplicationContext().getCurrentActivity().sendBroadcast(intent);
+    getReactApplicationContext().sendBroadcast(intent);
   }
 
   @ReactMethod
@@ -204,7 +204,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     if (isAllowedToTrackActivities()) {
       startTracking(promise);
-      getReactApplicationContext().getCurrentActivity().startService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
+      getReactApplicationContext().startService(new Intent(getReactApplicationContext(), DetectedActivityService.class));
       promise.resolve(true);
     } else {
       promise.reject("invalid_permission_status", "Permission needed.");
@@ -218,49 +218,49 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       return;
     }
 
-    ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
+    ActivityRecognition.getClient(getReactApplicationContext())
       .removeActivityUpdates(mActivityTransitionsPendingIntent);
     activityTrackingEnabled = false;
   }
 
-    @Override
-    public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-      if (requestCode != PERMISSION_REQUEST_ACTIVITY_RECOGNITION) {
-        return false;
-      }
-      mPermissionRequest.callback.invoke(grantResults, getPermissionAwareActivity(), mPermissionRequest.rationaleStatuses);
-      mPermissionRequest = null;
-      return true;
+  @Override
+  public boolean onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    if (requestCode != PERMISSION_REQUEST_ACTIVITY_RECOGNITION) {
+      return false;
     }
+    mPermissionRequest.callback.invoke(grantResults, getPermissionAwareActivity(), mPermissionRequest.rationaleStatuses);
+    mPermissionRequest = null;
+    return true;
+  }
 
-    public void sendJSEvent(String eventName,
-                           @Nullable Object params) {
-      getReactApplicationContext()
-        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-        .emit(eventName, params);
+  public void sendJSEvent(String eventName,
+                          @Nullable Object params) {
+    getReactApplicationContext()
+      .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+      .emit(eventName, params);
+  }
+
+  private PermissionAwareActivity getPermissionAwareActivity() {
+    Activity activity = getCurrentActivity();
+    if (activity == null) {
+      throw new IllegalStateException(
+        "Tried to use permissions API while not attached to an Activity.");
+    } else if (!(activity instanceof PermissionAwareActivity)) {
+      throw new IllegalStateException(
+        "Tried to use permissions API but the host Activity doesn't implement PermissionAwareActivity.");
     }
+    return (PermissionAwareActivity) activity;
+  }
 
-    private PermissionAwareActivity getPermissionAwareActivity() {
-      Activity activity = getCurrentActivity();
-      if (activity == null) {
-        throw new IllegalStateException(
-          "Tried to use permissions API while not attached to an Activity.");
-      } else if (!(activity instanceof PermissionAwareActivity)) {
-        throw new IllegalStateException(
-          "Tried to use permissions API but the host Activity doesn't implement PermissionAwareActivity.");
-      }
-      return (PermissionAwareActivity) activity;
+  private class Request {
+
+    public boolean[] rationaleStatuses;
+    public Callback callback;
+
+    public Request(boolean[] rationaleStatuses, Callback callback) {
+      this.rationaleStatuses = rationaleStatuses;
+      this.callback = callback;
     }
-
-    private class Request {
-
-      public boolean[] rationaleStatuses;
-      public Callback callback;
-
-      public Request(boolean[] rationaleStatuses, Callback callback) {
-        this.rationaleStatuses = rationaleStatuses;
-        this.callback = callback;
-      }
-    }
+  }
 
 }
