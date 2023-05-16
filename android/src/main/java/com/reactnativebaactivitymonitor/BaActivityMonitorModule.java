@@ -210,7 +210,12 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     try {
       if (isAllowedToTrackActivities()) {
         startTracking(promise);
-        getReactApplicationContext().getCurrentActivity().startService(new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class));
+        Intent serviceIntent = new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+          getReactApplicationContext().getCurrentActivity().startForegroundService(serviceIntent);
+        } else {
+          getReactApplicationContext().getCurrentActivity().startService(serviceIntent);
+        }
         promise.resolve(true);
       } else {
         promise.reject("invalid_permission_status", "Permission needed.");
@@ -230,6 +235,8 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
         .removeActivityUpdates(mActivityTransitionsPendingIntent);
       activityTrackingEnabled = false;
+      Intent intent = new Intent(getReactApplicationContext(), DetectedActivityService.class);
+      getReactApplicationContext().stopService(intent);
     } catch (Exception exception) {
       return;
     }
