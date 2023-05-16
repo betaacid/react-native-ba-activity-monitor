@@ -46,7 +46,6 @@ public class DetectedActivityService extends Service {
   @Override
   public void onCreate() {
     super.onCreate();
-    // Create a notification channel for devices running Android Oreo and later
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
       NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Cardata", NotificationManager.IMPORTANCE_DEFAULT);
       channel.setDescription("Cardata is tracking your motion activity.");
@@ -57,7 +56,6 @@ public class DetectedActivityService extends Service {
       manager.createNotificationChannel(channel);
     }
 
-    // Start the service in the foreground with a notification
     startForeground(DETECTED_ACTIVITY_NOTIFICATION_ID, createNotification());
     requestActivityUpdates();
   }
@@ -70,7 +68,6 @@ public class DetectedActivityService extends Service {
     stopForeground(true);
     NotificationManagerCompat.from(this).cancel(DETECTED_ACTIVITY_NOTIFICATION_ID);
   }
-
 
   private void requestActivityUpdates() {
     if(activityTrackingEnabled) {
@@ -100,7 +97,7 @@ public class DetectedActivityService extends Service {
 
     return new NotificationCompat.Builder(this, CHANNEL_ID)
       .setContentTitle("Cardata")
-      .setContentText("Cardata is tracking your trips automatically.")
+      .setContentText("Cardata is tracking your motion activity.")
       .setSmallIcon(appIconResId)
       .build();
   }
