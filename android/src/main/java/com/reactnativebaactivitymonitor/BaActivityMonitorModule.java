@@ -90,7 +90,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     if (runningQOrLater) {
       try {
         return PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-          getReactApplicationContext().getCurrentActivity(),
+          getReactApplicationContext(),
           Manifest.permission.ACTIVITY_RECOGNITION
         );
       } catch (Exception e) {
@@ -104,11 +104,11 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
   private void startTracking(Promise promise) {
     try {
       if(mActivityTransitionsPendingIntent == null) {
-        getReactApplicationContext().getCurrentActivity().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
-        mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext().getCurrentActivity());
+        getReactApplicationContext().registerReceiver(mTransitionsReceiver, new IntentFilter(TRANSITIONS_RECEIVER_ACTION));
+        mActivityTransitionsPendingIntent = TransitionsReceiver.getPendingIntent(getReactApplicationContext());
       }
 
-      ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
+      ActivityRecognition.getClient(getReactApplicationContext())
         .requestActivityUpdates(1000L, mActivityTransitionsPendingIntent)
         .addOnSuccessListener(
           result -> {
@@ -145,7 +145,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
 
     ActivityRecognitionResult result = new ActivityRecognitionResult(events, 1000L, SystemClock.elapsedRealtimeNanos());
     SafeParcelableSerializer.serializeToIntentExtra(result, intent, "com.google.android.location.internal.EXTRA_ACTIVITY_RESULT");
-    getReactApplicationContext().getCurrentActivity().sendBroadcast(intent);
+    getReactApplicationContext().sendBroadcast(intent);
   }
 
   @ReactMethod
@@ -210,12 +210,8 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
     try {
       if (isAllowedToTrackActivities()) {
         startTracking(promise);
-        Intent serviceIntent = new Intent(getReactApplicationContext().getCurrentActivity(), DetectedActivityService.class);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-          getReactApplicationContext().getCurrentActivity().startForegroundService(serviceIntent);
-        } else {
-          getReactApplicationContext().getCurrentActivity().startService(serviceIntent);
-        }
+        Intent serviceIntent = new Intent(getReactApplicationContext(), DetectedActivityService.class);
+        ContextCompat.startForegroundService(getReactApplicationContext(), serviceIntent);
         promise.resolve(true);
       } else {
         promise.reject("invalid_permission_status", "Permission needed.");
@@ -232,7 +228,7 @@ public class BaActivityMonitorModule extends ReactContextBaseJavaModule implemen
       return;
     }
     try {
-      ActivityRecognition.getClient(getReactApplicationContext().getCurrentActivity())
+      ActivityRecognition.getClient(getReactApplicationContext())
         .removeActivityUpdates(mActivityTransitionsPendingIntent);
       activityTrackingEnabled = false;
       Intent intent = new Intent(getReactApplicationContext(), DetectedActivityService.class);

@@ -47,11 +47,8 @@ public class DetectedActivityService extends Service {
   public void onCreate() {
     super.onCreate();
     if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-      NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "Cardata", NotificationManager.IMPORTANCE_DEFAULT);
+      NotificationChannel channel = new NotificationChannel(CHANNEL_ID, "AndroidForegroundService", NotificationManager.IMPORTANCE_DEFAULT);
       channel.setDescription("Cardata is tracking your motion activity.");
-      channel.enableLights(true);
-      channel.setLightColor(Color.BLUE);
-      channel.setShowBadge(true);
       NotificationManager manager = getSystemService(NotificationManager.class);
       manager.createNotificationChannel(channel);
     }
