@@ -22,7 +22,8 @@ export type ActivityType =
   | 'on-bicycle'
   | 'still'
   | 'walking'
-  | 'running';
+  | 'running'
+  | 'unknown';
 
 export interface Activity {
   type: ActivityType;
