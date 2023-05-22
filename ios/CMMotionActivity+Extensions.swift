@@ -18,7 +18,7 @@ extension CMMotionActivity {
         if walking { return "walking" }
         if running { return "running" }
         if automotive { return "in-vehicle" }
-        if cycling { return "on-bycicle" }
+        if cycling { return "on-bicycle" }
         return "unknown"
     }
     
